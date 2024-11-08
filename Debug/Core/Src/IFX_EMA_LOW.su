@@ -1,0 +1,3 @@
+../Core/Src/IFX_EMA_LOW.c:3:6:IFX_EMA_LOW_Init	16	static
+../Core/Src/IFX_EMA_LOW.c:9:7:IFX_EMA_LOW_Update	16	static
+../Core/Src/IFX_EMA_LOW.c:15:6:IFX_EMA_LOW_SetAlpha	16	static
