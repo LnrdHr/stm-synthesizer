@@ -23,8 +23,10 @@
 /* USER CODE BEGIN Includes */
 #include "tabele.h"
 #include "math.h"
-#include <IFX_EMA_LOW.h>
-#include <IFX_EMA_HIGH.h>
+#include <EMA_HIGH.h>
+#include <EMA_LOW.h>
+#include <Delay.h>
+#include <ADSR.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,12 +81,11 @@ DMA_HandleTypeDef hdma_usart1_rx;
  float readPointer_f;
  uint32_t readPointer_i;
  float pomakRadnogPolja_f;
- IFX_EMA_LOW low_filt;
- IFX_EMA_HIGH high_filt;
+ EMA_LOW low_filt;
+ EMA_HIGH high_filt;
  float ALPHA = 0.0f;
  float BETA = 0.0f;
-
-
+ Delay delay;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -112,7 +113,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc1)
 				  		ad_rez = ad_rez >> 2;
 				  		numADCconvert = 0;
 				  		sumAdc = 0;
-				  		ADCGain = ad_rez /1024.0;
+				  		ADCGain = ad_rez /1024.0f;
 				  	}
 }
 ////////////////////////////////////////////////////
@@ -124,7 +125,7 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef* hi2s2)
 	for (int i =0; i < HALF_BUFFER_SIZE; i++)
 	  {
 		  {
-			  dma_out[i] =  (0.1 * ADCGain *(WorkingBuffer[i]))  ;
+			  dma_out[i] =  (0.1f * ADCGain *(WorkingBuffer[i]))  ;
 		  }
 	  }
 }
@@ -137,7 +138,7 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef* hi2s2)
 	for (int i = HALF_BUFFER_SIZE; i < FULL_BUFFER_SIZE; i++)
 	  {
 		  {
-			  dma_out[i] =  (0.1 * ADCGain *(WorkingBuffer[i]))  ;
+			  dma_out[i] =  (0.1f * ADCGain *(WorkingBuffer[i]))  ;
 		  }
 	  }
 
@@ -149,6 +150,7 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
    char notaStanje = rxBuff[0];  // ON ili OFF
    char nota = rxBuff[1];  // koja tipka u MIDI sustavu
    char notaVelo = rxBuff[2];   // glasnoca
+   ADSR_Reset();
 
    if (notaStanje == 0x90)  // nota ON
    {
@@ -161,14 +163,14 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
 			   glasnocaTonova[i] = notaVelo;
 			   brojAktiviranihTipki++;
 			   //Izracun frekv iz MIDI note
-			    f= 440.0 * (pow(2,((nota - 69) * 0.0833333 )));
+			    f= 440.0f * (pow(2,((nota - 69) * 0.0833333f )));
 			    // Izracun  pomaka pokazivaca u tablici
 			    // ReadPointer = vel. tablice * f /sampling frekv.
-			    pomakRadnogPolja_f = 2048.0 * f / 44000.0;
+			    pomakRadnogPolja_f = 2048.0f * f / 44000.0f;
 			   // readPointer_f =  f;
 			     readPointer_f = 0;
 			 //  break;
-
+			     ADSR_Trigger();
 		   }
 
 	   }
@@ -183,6 +185,7 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
   			   stanjeTipki[i] = 0;
   			   glasnocaTonova[i] = 0;
   			   brojAktiviranihTipki--;
+  			   ADSR_Release();
   			   break;
   		   }
   	   }
@@ -203,21 +206,30 @@ void  ArangeSamplesInHalfBuff(void)
 	    		readPointer_i = round(readPointer_f);
 	    	}
 
+
 	    	//low pass filter processing
 	    	/*
 	    	float in_f = (float)sineLUT[readPointer_i]; //convert to float
-	    	float inProcessed_f = IFX_EMA_LOW_Update(&low_filt,in_f);
+	    	float inProcessed_f = EMA_LOW_Update(&low_filt,in_f);
 	    	uint16_t inProcessed_i = round(inProcessed_f); //convert back to int
 			*/
 
 	    	//high pass filter processing
-
+	    	/*
 	    	float in_f = (float)sineLUT[readPointer_i]; //convert to float
-			float inProcessed_f = IFX_EMA_HIGH_Update(&high_filt,in_f);
+			float inProcessed_f = EMA_HIGH_Update(&high_filt,in_f);
 			uint16_t inProcessed_i = round(inProcessed_f); //convert back to int
+			*/
 
+			//delay processing
+			//inProcessed_f = delay_Update(&delay, inProcessed_f);
+			//inProcessed_i = round(inProcessed_f);
 
-	    	WorkingBuffer[pointerRadnogPolja] = inProcessed_i;
+	    	//adsr processing
+			uint16_t in_i = sineLUT[readPointer_i];
+			uint16_t inProcessed_i = ADSR_Update(in_i);
+
+			WorkingBuffer[pointerRadnogPolja] = inProcessed_i;
 
 
 	    	if (pointerRadnogPolja < FULL_BUFFER_SIZE)
@@ -242,14 +254,24 @@ void  ArangeSamplesInFullBuff(void)
 	    	//low pass filter processing
 			/*
 			float in_f = (float)sineLUT[readPointer_i]; //convert to float
-			float inProcessed_f = IFX_EMA_LOW_Update(&low_filt,in_f);
+			float inProcessed_f = EMA_LOW_Update(&low_filt,in_f);
 			uint16_t inProcessed_i = round(inProcessed_f); //convert back to int
 			*/
 
 			//high pass filter processing
+	    	/*
 			float in_f = (float)sineLUT[readPointer_i]; //convert to float
-			float inProcessed_f = IFX_EMA_HIGH_Update(&high_filt,in_f);
+			float inProcessed_f = EMA_HIGH_Update(&high_filt,in_f);
 			uint16_t inProcessed_i = round(inProcessed_f); //convert back to int
+			*/
+
+			//delay processing
+			//inProcessed_f = delay_Update(&delay, inProcessed_f);
+			//inProcessed_i = round(inProcessed_f);
+
+	    	//adsr processing
+	    	uint16_t in_i = sineLUT[readPointer_i];
+	    	uint16_t inProcessed_i = ADSR_Update(in_i);
 
 			WorkingBuffer[pointerRadnogPolja] = inProcessed_i;
 
@@ -278,7 +300,9 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  IFX_EMA_LOW_Init(&low_filt, ALPHA);
+  //EMA_LOW_Init(&low_filt, ALPHA);
+  //delay_Init(&delay, 500.0f, 0.5f, 0.5f, SAMPLING_FREQ);
+  ADSR_Init(SAMPLING_FREQ, 10, 10, 0.7, 10);
   /* USER CODE END Init */
 
   /* Configure the system clock */
