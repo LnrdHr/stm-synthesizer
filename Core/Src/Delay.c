@@ -29,10 +29,12 @@ float delay_Update(Delay *delay, float inputSample)
 
 	delay->out = (1.0f - delay->mix) * inputSample + delay->mix * delayLineOutput;
 
+	/*
 	if(delay->out > 1.0f)
 		delay->out = 1.0f;
 	else if(delay->out < -1.0f)
 		delay->out = -1.0f;
+	*/
 
 	return delay->out;
 }

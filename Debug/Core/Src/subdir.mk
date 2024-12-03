@@ -9,6 +9,7 @@ C_SRCS += \
 ../Core/Src/Delay.c \
 ../Core/Src/EMA_HIGH.c \
 ../Core/Src/EMA_LOW.c \
+../Core/Src/Voice.c \
 ../Core/Src/main.c \
 ../Core/Src/stm32f4xx_hal_msp.c \
 ../Core/Src/stm32f4xx_it.c \
@@ -21,6 +22,7 @@ OBJS += \
 ./Core/Src/Delay.o \
 ./Core/Src/EMA_HIGH.o \
 ./Core/Src/EMA_LOW.o \
+./Core/Src/Voice.o \
 ./Core/Src/main.o \
 ./Core/Src/stm32f4xx_hal_msp.o \
 ./Core/Src/stm32f4xx_it.o \
@@ -33,6 +35,7 @@ C_DEPS += \
 ./Core/Src/Delay.d \
 ./Core/Src/EMA_HIGH.d \
 ./Core/Src/EMA_LOW.d \
+./Core/Src/Voice.d \
 ./Core/Src/main.d \
 ./Core/Src/stm32f4xx_hal_msp.d \
 ./Core/Src/stm32f4xx_it.d \
@@ -48,7 +51,7 @@ Core/Src/%.o Core/Src/%.su Core/Src/%.cyclo: ../Core/Src/%.c Core/Src/subdir.mk
 clean: clean-Core-2f-Src
 
 clean-Core-2f-Src:
-	-$(RM) ./Core/Src/ADSR.cyclo ./Core/Src/ADSR.d ./Core/Src/ADSR.o ./Core/Src/ADSR.su ./Core/Src/Delay.cyclo ./Core/Src/Delay.d ./Core/Src/Delay.o ./Core/Src/Delay.su ./Core/Src/EMA_HIGH.cyclo ./Core/Src/EMA_HIGH.d ./Core/Src/EMA_HIGH.o ./Core/Src/EMA_HIGH.su ./Core/Src/EMA_LOW.cyclo ./Core/Src/EMA_LOW.d ./Core/Src/EMA_LOW.o ./Core/Src/EMA_LOW.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/stm32f4xx_hal_msp.cyclo ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_it.cyclo ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.cyclo ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su
+	-$(RM) ./Core/Src/ADSR.cyclo ./Core/Src/ADSR.d ./Core/Src/ADSR.o ./Core/Src/ADSR.su ./Core/Src/Delay.cyclo ./Core/Src/Delay.d ./Core/Src/Delay.o ./Core/Src/Delay.su ./Core/Src/EMA_HIGH.cyclo ./Core/Src/EMA_HIGH.d ./Core/Src/EMA_HIGH.o ./Core/Src/EMA_HIGH.su ./Core/Src/EMA_LOW.cyclo ./Core/Src/EMA_LOW.d ./Core/Src/EMA_LOW.o ./Core/Src/EMA_LOW.su ./Core/Src/Voice.cyclo ./Core/Src/Voice.d ./Core/Src/Voice.o ./Core/Src/Voice.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/stm32f4xx_hal_msp.cyclo ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_it.cyclo ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.cyclo ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su
 
 .PHONY: clean-Core-2f-Src
 

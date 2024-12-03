@@ -23,10 +23,12 @@
 /* USER CODE BEGIN Includes */
 #include "tabele.h"
 #include "math.h"
+#include "stdio.h"
 #include <EMA_HIGH.h>
 #include <EMA_LOW.h>
 #include <Delay.h>
 #include <ADSR.h>
+#include "Voice.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,6 +50,8 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
+I2C_HandleTypeDef hi2c1;
+
 I2S_HandleTypeDef hi2s2;
 DMA_HandleTypeDef hdma_spi2_tx;
 
@@ -56,10 +60,17 @@ DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USER CODE BEGIN PV */
 /* USER CODE BEGIN PV */
+//#define ENVELOPE
+#define TABLE_SIZE 2048
 #define FULL_BUFFER_SIZE 2048
 #define HALF_BUFFER_SIZE 1024
 #define ADC_BUFFER_SIZE 2
 #define SAMPLING_FREQ 44000
+#define CURRENT_LUT triangleLUT
+#define A_TIME_MS 10
+#define D_TIME_MS 20
+#define S_LEVEL 0.5
+#define R_TIME_MS 30
  uint16_t dma_in[FULL_BUFFER_SIZE];
  uint16_t dma_out[FULL_BUFFER_SIZE];
  uint16_t adc1_buf[ADC_BUFFER_SIZE]; // buffer za adc potenciometar
@@ -68,24 +79,19 @@ DMA_HandleTypeDef hdma_usart1_rx;
  uint8_t glasnocaTonova[16];
  uint8_t brojAktiviranihTipki =0;
  uint16_t triangleTable[FULL_BUFFER_SIZE];
- int32_t i;
- // uint16_t ad_rez = 0;
- // uint16_t adc_index =0;
  uint32_t sumAdc=0;
- uint32_t pointerRadnogPolja = 0;
+ uint32_t indeksRadnogPolja = 0;
  uint16_t numADCconvert = 0;
- //float outIndex =0;
  float ADCGain =0;  // treba biti izmedju 0 i 1 obavezno!!
  uint16_t WorkingBuffer[FULL_BUFFER_SIZE]= {0};
  float f; //frekvencija note
- float readPointer_f;
- uint32_t readPointer_i;
  float pomakRadnogPolja_f;
- EMA_LOW low_filt;
- EMA_HIGH high_filt;
  float ALPHA = 0.0f;
  float BETA = 0.0f;
- Delay delay;
+ Voice* voices[16];
+ void  ArangeSamplesInFullBuff();
+ void  ArangeSamplesInHalfBuff();
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,6 +101,7 @@ static void MX_DMA_Init(void);
 static void MX_I2S2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -121,27 +128,23 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc1)
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef* hi2s2)
 {
    ArangeSamplesInHalfBuff();
-
+	ADCGain = 0.3; // samo za debug dok nema potenciometra
 	for (int i =0; i < HALF_BUFFER_SIZE; i++)
 	  {
-		  {
 			  dma_out[i] =  (0.1f * ADCGain *(WorkingBuffer[i]))  ;
-		  }
 	  }
 }
 ////////////////////////////////////////////////////
 //DMA slanja druge polovice buffera na DAC
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef* hi2s2)
 {
- 	 ArangeSamplesInFullBuff();
 
+ 	 ArangeSamplesInFullBuff();
+ 	ADCGain = 0.3; // samo za debug dok nema potenciometra
 	for (int i = HALF_BUFFER_SIZE; i < FULL_BUFFER_SIZE; i++)
 	  {
-		  {
 			  dma_out[i] =  (0.1f * ADCGain *(WorkingBuffer[i]))  ;
-		  }
 	  }
-
 }
 ////////////////////////////////////////////////////
 // MIDI IN obrada
@@ -150,42 +153,29 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
    char notaStanje = rxBuff[0];  // ON ili OFF
    char nota = rxBuff[1];  // koja tipka u MIDI sustavu
    char notaVelo = rxBuff[2];   // glasnoca
-   ADSR_Reset();
 
-   if (notaStanje == 0x90)  // nota ON
+   if (notaStanje==0x90) // nota ON
    {
-	//   for (int i =0; i <16; i++)
-	   i =0;
+	   for(int i=0; i<16; ++i)
 	   {
-		   if (stanjeTipki[i]== 0 )
+		   if(voices[i] == NULL) //nailazak prvog praznog mjesta u polju
 		   {
-			   stanjeTipki[i] = nota;
-			   glasnocaTonova[i] = notaVelo;
-			   brojAktiviranihTipki++;
-			   //Izracun frekv iz MIDI note
-			    f= 440.0f * (pow(2,((nota - 69) * 0.0833333f )));
-			    // Izracun  pomaka pokazivaca u tablici
-			    // ReadPointer = vel. tablice * f /sampling frekv.
-			    pomakRadnogPolja_f = 2048.0f * f / 44000.0f;
-			   // readPointer_f =  f;
-			     readPointer_f = 0;
-			 //  break;
-			     ADSR_Trigger();
+			   ADSR* adsr;
+			   ADSR_Init(adsr, SAMPLING_FREQ, A_TIME_MS,D_TIME_MS,S_LEVEL, R_TIME_MS);
+			   Voice* v;
+			   Voice_Init(v, adsr, nota, notaVelo);
+			   voices[i] = v;
+			   break;
 		   }
-
 	   }
+
    }
 
    if (notaStanje == 0x80)  // nota OFF
     {
-  	   for (int i =0; i <16; i++)
-  	   {
-  		   if (stanjeTipki[i]== nota )
-  		   {
-  			   stanjeTipki[i] = 0;
-  			   glasnocaTonova[i] = 0;
-  			   brojAktiviranihTipki--;
-  			   ADSR_Release();
+  	   for(int i=0; i<16; ++i){
+  		   if(voices[i]->nota == nota){
+  			   voices[i]->ovojnica->released = 1;
   			   break;
   		   }
   	   }
@@ -197,45 +187,51 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
 void  ArangeSamplesInHalfBuff(void)
 {
    //
-	pointerRadnogPolja = 0;
-	    while(pointerRadnogPolja < HALF_BUFFER_SIZE)  //priprema radnog buffera
-	    {  //Ogranicavanje rubnog uvjeta
-	    	while (readPointer_f >= FULL_BUFFER_SIZE)
+	indeksRadnogPolja = 0;
+	    while(indeksRadnogPolja < HALF_BUFFER_SIZE)
+	    {
+	    	for(int i=0; i<16; ++i)
 	    	{
-	    		readPointer_f = readPointer_f - FULL_BUFFER_SIZE ;
-	    		readPointer_i = round(readPointer_f);
+	    		if(voices[i] != NULL)
+	    		{
+	    			while(voices[i]->accFaze_f > FULL_BUFFER_SIZE)
+	    			{
+	    				voices[i]->accFaze_f -= FULL_BUFFER_SIZE;
+	    			}
+	    		}
 	    	}
 
+			uint16_t sumOfVoices_ui=0;
+			uint16_t numOfVoices_ui=0;
+			for(int i=0;i<16;++i)
+			{
+				if(voices[i] != NULL)
+				{
+					if(voices[i]->ovojnica->state == offState)
+					{
+						voices[i] = NULL;
+					}
+					else
+					{
+						uint16_t accFaze_ui = round(voices[i]->accFaze_f);
+						sumOfVoices_ui += ADSR_Update(voices[i]->ovojnica, CURRENT_LUT[accFaze_ui]);
+						numOfVoices_ui++;
+					}
+				}
 
-	    	//low pass filter processing
-	    	/*
-	    	float in_f = (float)sineLUT[readPointer_i]; //convert to float
-	    	float inProcessed_f = EMA_LOW_Update(&low_filt,in_f);
-	    	uint16_t inProcessed_i = round(inProcessed_f); //convert back to int
-			*/
+			}
+			WorkingBuffer[indeksRadnogPolja] = sumOfVoices_ui/numOfVoices_ui;
 
-	    	//high pass filter processing
-	    	/*
-	    	float in_f = (float)sineLUT[readPointer_i]; //convert to float
-			float inProcessed_f = EMA_HIGH_Update(&high_filt,in_f);
-			uint16_t inProcessed_i = round(inProcessed_f); //convert back to int
-			*/
+	    	if (indeksRadnogPolja < FULL_BUFFER_SIZE)
+	    		indeksRadnogPolja++;
 
-			//delay processing
-			//inProcessed_f = delay_Update(&delay, inProcessed_f);
-			//inProcessed_i = round(inProcessed_f);
-
-	    	//adsr processing
-			uint16_t in_i = sineLUT[readPointer_i];
-			uint16_t inProcessed_i = ADSR_Update(in_i);
-
-			WorkingBuffer[pointerRadnogPolja] = inProcessed_i;
-
-
-	    	if (pointerRadnogPolja < FULL_BUFFER_SIZE)
-	    		pointerRadnogPolja++;
-	    	readPointer_f =  readPointer_f + pomakRadnogPolja_f;
-	    	readPointer_i = round(readPointer_f);
+	    	for(int i=0; i<16; ++i)
+	    	{
+	    		if(voices[i] != NULL)
+	    		{
+	    			voices[i]->accFaze_f += voices[i]->pomakRadnogPolja_f;
+	    		}
+	    	}
 	    }
 }
 ////////////////////////////////////////////////////
@@ -243,44 +239,53 @@ void  ArangeSamplesInHalfBuff(void)
 void  ArangeSamplesInFullBuff(void)
 {
    //
-	    while (pointerRadnogPolja < FULL_BUFFER_SIZE)  //priprema radnog buffera
-	    {  //Ogranicavanje rubnog uvjeta
-	    	while (readPointer_f >= (FULL_BUFFER_SIZE))
+	    while (indeksRadnogPolja < FULL_BUFFER_SIZE)  //priprema radnog buffera
+	    {
+	    	for(int i=0; i<16; ++i)
 	    	{
-	    		readPointer_f = readPointer_f - FULL_BUFFER_SIZE ;
-	    		readPointer_i = round(readPointer_f);
+	    		if(voices[i] != NULL)
+	    		{
+	    			while(voices[i]->accFaze_f > FULL_BUFFER_SIZE)
+	    			{
+	    				voices[i]->accFaze_f -= FULL_BUFFER_SIZE;
+	    			}
+	    		}
 	    	}
 
-	    	//low pass filter processing
-			/*
-			float in_f = (float)sineLUT[readPointer_i]; //convert to float
-			float inProcessed_f = EMA_LOW_Update(&low_filt,in_f);
-			uint16_t inProcessed_i = round(inProcessed_f); //convert back to int
-			*/
+	    	uint16_t sumOfVoices_ui=0;
+			uint16_t numOfVoices_ui=0;
+			for(int i=0;i<16;++i)
+			{
+				if(voices[i] != NULL)
+				{
+					if(voices[i]->ovojnica->state == offState)
+					{
+						voices[i] = NULL;
+					}
+					else
+					{
+						uint16_t accFaze_ui = round(voices[i]->accFaze_f);
+						sumOfVoices_ui += ADSR_Update(voices[i]->ovojnica, CURRENT_LUT[accFaze_ui]);
+						numOfVoices_ui++;
+					}
+				}
 
-			//high pass filter processing
-	    	/*
-			float in_f = (float)sineLUT[readPointer_i]; //convert to float
-			float inProcessed_f = EMA_HIGH_Update(&high_filt,in_f);
-			uint16_t inProcessed_i = round(inProcessed_f); //convert back to int
-			*/
+			}
+			WorkingBuffer[indeksRadnogPolja] = sumOfVoices_ui/numOfVoices_ui;
 
-			//delay processing
-			//inProcessed_f = delay_Update(&delay, inProcessed_f);
-			//inProcessed_i = round(inProcessed_f);
+	    	if (indeksRadnogPolja < FULL_BUFFER_SIZE)
+	    		indeksRadnogPolja++;
 
-	    	//adsr processing
-	    	uint16_t in_i = sineLUT[readPointer_i];
-	    	uint16_t inProcessed_i = ADSR_Update(in_i);
-
-			WorkingBuffer[pointerRadnogPolja] = inProcessed_i;
-
-	    	if (pointerRadnogPolja < FULL_BUFFER_SIZE)
-	    		pointerRadnogPolja++;
-	    	readPointer_f = readPointer_f + pomakRadnogPolja_f;
-	    	readPointer_i = round(readPointer_f);
+	    	for(int i=0; i<16; ++i)
+	    	{
+	    		if(voices[i] != NULL)
+	    		{
+	    			voices[i]->accFaze_f += voices[i]->pomakRadnogPolja_f;
+	    		}
+	    	}
 	    }
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -300,9 +305,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  //EMA_LOW_Init(&low_filt, ALPHA);
-  //delay_Init(&delay, 500.0f, 0.5f, 0.5f, SAMPLING_FREQ);
-  ADSR_Init(SAMPLING_FREQ, 10, 10, 0.7, 10);
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -319,6 +322,7 @@ int main(void)
   MX_I2S2_Init();
   MX_ADC1_Init();
   MX_USART1_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -332,6 +336,9 @@ int main(void)
   while (1)
   {
 	//
+
+
+	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -446,6 +453,40 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
   * @brief I2S2 Initialization Function
   * @param None
   * @retval None
@@ -542,6 +583,7 @@ static void MX_DMA_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
@@ -549,6 +591,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pins : PA2 PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
