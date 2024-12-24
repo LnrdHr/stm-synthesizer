@@ -14,7 +14,7 @@ float EMA_HIGH_Update(EMA_HIGH *filt, float in)
 	return filt->out;
 }
 
-void EMA_LOW_SetBeta(EMA_HIGH *filt, float beta)
+void EMA_HIGH_SetBeta(EMA_HIGH *filt, float beta)
 {
 	//clamping - ogranicavanje bete
 	if(beta > 1.0f)
