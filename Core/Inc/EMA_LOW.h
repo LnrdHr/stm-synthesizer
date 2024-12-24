@@ -1,5 +1,5 @@
-#ifndef IFX_EMA_LOW_H
-#define IFX_EMA_LOW_H
+#ifndef EMA_LOW_H
+#define EMA_LOW_H
 
 typedef struct
 {
@@ -15,10 +15,10 @@ typedef struct
 	 */
 	float alpha;
 	float out;
-}IFX_EMA_LOW;
+}EMA_LOW;
 
-void IFX_EMA_LOW_Init(IFX_EMA_LOW *filt, float alpha);
-void IFX_EMA_LOW_SetAlpha(IFX_EMA_LOW *filt, float alpha);
-float IFX_EMA_LOW_Update(IFX_EMA_LOW *filt, float in);
+void EMA_LOW_Init(EMA_LOW *filt, float alpha);
+void EMA_LOW_SetAlpha(EMA_LOW *filt, float alpha);
+float EMA_LOW_Update(EMA_LOW *filt, float in);
 
 #endif
