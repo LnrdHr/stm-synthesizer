@@ -7,15 +7,16 @@
 typedef struct
 {
 	int samplingRate;
-	//attackState=1, decayState=2,...
+
 	enum State
 	{
+		//attackState=1, decayState=2,...
 		offState= 0,
 		attackState,
 		decayState,
 		sustainState,
 		releaseState
-	};
+	}state;
 
 	float attackTime;
 	float decayTime;
@@ -27,23 +28,21 @@ typedef struct
 	float out;  //izlazna vrijednost amplitude nakon djelovanja ovojnice
 	char triggered; //mijenja  je trigger() funkcija u funkciji HAL_UART_RxCpltCallback() u main.c
 	char released; //mijenja je release() funkcija u funkciji HAL_UART_RxCpltCallback() u main.c
-	char finished;
 }ADSR;
 
-extern ADSR adsr; //mora se tako definirati da bi bila dostupna u main.c
+ADSR* ADSR_Init(int samplingRate, float attackTime, float decayTime, float sustainLevel, float releaseTime);
 
-void ADSR_Init(int samplingRate, float attackTime, float decayTime, float sustainLevel, float releaseTime);
+//state machine funkcija koja se nalazi u callbacku ArangeSamples
+uint16_t ADSR_Update(ADSR* adsr, unsigned int in);
 
-//izracun sljedeceg uzorka na temelju stanja ovojnice
-uint16_t ADSR_CalculateNextSample(float Nsamples, uint16_t input, float b1, float b2);
+/*
 
-//state machine funkcija koja se nalazi u callbackovima ArangeSamplesInHalfBuff i ArangeSamplesInFullBuff
-uint16_t ADSR_Update(unsigned int in);
 //postavlja triggered zastavicu u 1
 void ADSR_Trigger();
 //postavlja released zastavicu u 1, a triggered u 0(da ne bi slucajno bili u stanju released i triggered istovremeno)
 void ADSR_Release();
 //resetira obje zastavice u 0
 void ADSR_Reset();
+*/
 
 #endif

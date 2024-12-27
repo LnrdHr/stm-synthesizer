@@ -1,0 +1,3 @@
+../Core/Src/EMA_LOW.c:3:6:EMA_LOW_Init	0	static
+../Core/Src/EMA_LOW.c:9:7:EMA_LOW_Update	0	static
+../Core/Src/EMA_LOW.c:15:6:EMA_LOW_SetAlpha	0	static
