@@ -38,7 +38,17 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define TABLE_SIZE 2048
+#define FULL_BUFFER_SIZE 2048
+#define HALF_BUFFER_SIZE 1024
+#define ADC_BUFFER_SIZE 2
+#define SAMPLING_FREQ 44000
+#define CURRENT_LUT triangleLUT
+#define A_TIME_MS 10
+#define D_TIME_MS 20
+#define S_LEVEL 0.5
+#define R_TIME_MS 30
+#define POLYNUM 6
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -59,24 +69,11 @@ UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USER CODE BEGIN PV */
-/* USER CODE BEGIN PV */
-//#define ENVELOPE
-#define TABLE_SIZE 2048
-#define FULL_BUFFER_SIZE 2048
-#define HALF_BUFFER_SIZE 1024
-#define ADC_BUFFER_SIZE 2
-#define SAMPLING_FREQ 44000
-#define CURRENT_LUT triangleLUT
-#define A_TIME_MS 10
-#define D_TIME_MS 20
-#define S_LEVEL 0.5
-#define R_TIME_MS 30
  uint16_t dma_in[FULL_BUFFER_SIZE];
  uint16_t dma_out[FULL_BUFFER_SIZE];
  uint16_t adc1_buf[ADC_BUFFER_SIZE]; // buffer za adc potenciometar
  uint8_t rxBuff[3];  //Buffer za MIDI RX
  uint8_t stanjeTipki[16]; // Koje su tipke pritisnute
- uint8_t glasnocaTonova[16];
  uint8_t brojAktiviranihTipki =0;
  uint16_t triangleTable[FULL_BUFFER_SIZE];
  uint32_t sumAdc=0;
@@ -89,8 +86,6 @@ DMA_HandleTypeDef hdma_usart1_rx;
  float ALPHA = 0.0f;
  float BETA = 0.0f;
  Voice* voices[16];
- void  ArangeSamplesInFullBuff();
- void  ArangeSamplesInHalfBuff();
 
 /* USER CODE END PV */
 
@@ -103,7 +98,8 @@ static void MX_ADC1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-
+void  ArangeSamplesInFullBuff();
+void  ArangeSamplesInHalfBuff();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -158,12 +154,10 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
    {
 	   for(int i=0; i<16; ++i)
 	   {
-		   if(voices[i] == NULL) //nailazak prvog praznog mjesta u polju
+		   if(voices[i] == NULL || voices[i]->aktivan == 0) //nailazak prvog praznog mjesta u polju
 		   {
-			   ADSR* adsr;
-			   ADSR_Init(adsr, SAMPLING_FREQ, A_TIME_MS,D_TIME_MS,S_LEVEL, R_TIME_MS);
-			   Voice* v;
-			   Voice_Init(v, adsr, nota, notaVelo);
+			   ADSR* adsr = ADSR_Init(SAMPLING_FREQ, A_TIME_MS,D_TIME_MS,S_LEVEL, R_TIME_MS);
+			   Voice* v = Voice_Init(adsr, nota, notaVelo);
 			   voices[i] = v;
 			   break;
 		   }
@@ -180,7 +174,6 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
   		   }
   	   }
      }
-
 }
 ////////////////////////////////////////////////////
 // Priprema prve polovice buffera dok traje DMA druge polovice
@@ -205,11 +198,11 @@ void  ArangeSamplesInHalfBuff(void)
 			uint16_t numOfVoices_ui=0;
 			for(int i=0;i<16;++i)
 			{
-				if(voices[i] != NULL)
+				if(voices[i]->aktivan == 1)
 				{
 					if(voices[i]->ovojnica->state == offState)
 					{
-						voices[i] = NULL;
+						voices[i]->aktivan = 0;
 					}
 					else
 					{
@@ -220,7 +213,7 @@ void  ArangeSamplesInHalfBuff(void)
 				}
 
 			}
-			WorkingBuffer[indeksRadnogPolja] = sumOfVoices_ui/numOfVoices_ui;
+			WorkingBuffer[indeksRadnogPolja] = sumOfVoices_ui/POLYNUM;
 
 	    	if (indeksRadnogPolja < FULL_BUFFER_SIZE)
 	    		indeksRadnogPolja++;
@@ -271,7 +264,7 @@ void  ArangeSamplesInFullBuff(void)
 				}
 
 			}
-			WorkingBuffer[indeksRadnogPolja] = sumOfVoices_ui/numOfVoices_ui;
+			WorkingBuffer[indeksRadnogPolja] = sumOfVoices_ui/POLYNUM;
 
 	    	if (indeksRadnogPolja < FULL_BUFFER_SIZE)
 	    		indeksRadnogPolja++;

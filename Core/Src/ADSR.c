@@ -2,15 +2,15 @@
 #include <stdint.h>
 #include "math.h"
 
-uint32_t counter=0; //brojac koji provjerava da li smo dosli do kraja pojedinog segmenta
-uint16_t Nsamples=0; //broj uzoraka segmenta
-float b1=0; //pocetna tocka level segmenta
-float b2=0; //krajnja tocka level segmenta
-uint16_t out=0; //amplitudni izlaz
+ uint32_t counter=0; //brojac koji provjerava da li smo dosli do kraja pojedinog segmenta
+ uint16_t Nsamples=0; //broj uzoraka segmenta
+ float b1=0; //pocetna tocka level segmenta
+ float b2=0; //krajnja tocka level segmenta
 
 //inicijalizacija ovojnice
-void ADSR_Init(ADSR* adsr, int samplingRate, float aTime, float dTime, float sLevel, float rTime)
+ADSR* ADSR_Init(int samplingRate, float aTime, float dTime, float sLevel, float rTime)
 {
+ ADSR* adsr;
  adsr->state=offState;
  adsr->attackTime=aTime;
  adsr->decayTime=dTime;
@@ -19,6 +19,7 @@ void ADSR_Init(ADSR* adsr, int samplingRate, float aTime, float dTime, float sLe
  adsr->samplingRate=samplingRate;
  adsr->triggered = 0;
  adsr->released = 0;
+ return adsr;
 }
 
 /*provjera u kojem je stanju ovojnica
@@ -26,8 +27,9 @@ void ADSR_Init(ADSR* adsr, int samplingRate, float aTime, float dTime, float sLe
  *
  *
 */
-float ADSR_Update(ADSR* adsr, unsigned int in)
+uint16_t ADSR_Update(ADSR* adsr, unsigned int in)
 {
+	uint16_t out=0; //amplitudni izlaz
  switch (adsr->state)
  {
  case offState:
@@ -56,8 +58,6 @@ float ADSR_Update(ADSR* adsr, unsigned int in)
 
   out = (int)(counter * in * (b2-b1) / Nsamples);
   counter++;
- //    printf("%d\n", counter);
- //    out = ADSR_CalculateNextSample(Nsamples, in, b1, b2);
 
   break;
 
@@ -69,8 +69,8 @@ float ADSR_Update(ADSR* adsr, unsigned int in)
    b1=b2=adsr->sustainLevel;
   }
   out =  (in * b1) -  (int)(counter * in * (b1- b2) / Nsamples);
-    counter++;
- //    out = ADSR_CalculateNextSample(Nsamples, in, b1, b2);
+  counter++;
+
   break;
 
  case sustainState:
@@ -85,11 +85,11 @@ float ADSR_Update(ADSR* adsr, unsigned int in)
   }
   out = round(in * b2);
    counter++;
-  //out = ADSR_CalculateNextSample(Nsamples, in, b1, b2);
+
   break;
 
  case releaseState:
-  //ovojnica ne mora biti u off stanju da bi se mogla ponovno pokrenuti
+
   if(adsr->triggered==1)
   {
    adsr->state=attackState;
@@ -108,17 +108,9 @@ float ADSR_Update(ADSR* adsr, unsigned int in)
   }
   out =  (in * b1) - round(counter * in * (b1- b2) / Nsamples);
   counter++;
- //    out = ADSR_CalculateNextSample(Nsamples, in, b1, b2);
+
   break;
  }
- return out;
-}
-
-//izlaz = ulaz + (Krajnja tocka segmenta - Prva tocka segmenta) / Broj uzoraka segmenta
-uint16_t ADSR_CalculateNextSample(float Nsamples, uint16_t in, float b1, float b2)
-{
-//    out = round(in + (b2-b1) / Nsamples);
- counter++;
  return out;
 }
 

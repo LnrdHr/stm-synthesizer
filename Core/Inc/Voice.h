@@ -12,8 +12,9 @@ typedef struct
 	float pomakRadnogPolja_f;
 	float accFaze_f;
 	ADSR* ovojnica;
+	int aktivan;
 }Voice;
 
-void Voice_Init(Voice* voice, ADSR* adsr, char nota, char notaVelo);
+Voice* Voice_Init(ADSR* adsr, char nota, char notaVelo);
 
 #endif

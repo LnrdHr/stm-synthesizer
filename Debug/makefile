@@ -34,34 +34,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := stm32F411_5102
+BUILD_ARTIFACT_NAME := stm-synthesizer
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-stm32F411_5102.elf \
+stm-synthesizer.elf \
 
 MAP_FILES += \
-stm32F411_5102.map \
+stm-synthesizer.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-stm32F411_5102.list \
+stm-synthesizer.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: stm32F411_5102.elf secondary-outputs
+main-build: stm-synthesizer.elf secondary-outputs
 
 # Tool invocations
-stm32F411_5102.elf stm32F411_5102.map: $(OBJS) $(USER_OBJS) C:\Users\Korisnik\STM32CubeIDE\workspace_1.16.1\stm32F411_5102\STM32F411VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "stm32F411_5102.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Korisnik\STM32CubeIDE\workspace_1.16.1\stm32F411_5102\STM32F411VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="stm32F411_5102.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+stm-synthesizer.elf stm-synthesizer.map: $(OBJS) $(USER_OBJS) C:\Users\Korisnik\STM32CubeIDE\workspace_1.16.1\stm-synthesizer\STM32F411VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "stm-synthesizer.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Korisnik\STM32CubeIDE\workspace_1.16.1\stm-synthesizer\STM32F411VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="stm-synthesizer.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -70,14 +70,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-stm32F411_5102.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "stm32F411_5102.list"
+stm-synthesizer.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "stm-synthesizer.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) default.size.stdout stm32F411_5102.elf stm32F411_5102.list stm32F411_5102.map
+	-$(RM) default.size.stdout stm-synthesizer.elf stm-synthesizer.list stm-synthesizer.map
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
