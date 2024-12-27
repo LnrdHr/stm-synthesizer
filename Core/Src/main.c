@@ -1,5 +1,3 @@
-  * @file           : main.c
-  * @brief          : Main program body
 	/* USER CODE BEGIN Header */
 	/** verzija pseudopolifonija s ovojnicom
 	 ******************************************************************************
@@ -29,11 +27,7 @@
 	#include "tabele.h"
 	#include "math.h"
 	#include "stdio.h"
-	#include <EMA_HIGH.h>
-	#include <EMA_LOW.h>
-	#include <Delay.h>
 	#include <ADSR.h>
-
 	#include "Voice.h"
 
 	/* USER CODE END Includes */
@@ -51,11 +45,11 @@
 	#define QUARTER_BUFFER_SIZE FULL_BUFFER_SIZE/4
 	#define ADC_BUFFER_SIZE 2
 	#define SAMPLING_FREQ 44000
-	#define CURRENT_LUT triangleLUT
+	#define CURRENT_LUT sineLUT
 	#define A_TIME_MS 10
 	#define D_TIME_MS 20
 	#define S_LEVEL 0.5
-	#define R_TIME_MS 30
+	#define R_TIME_MS 20
 	#define POLYNUM 6
 	/* USER CODE END PD */
 
@@ -66,8 +60,6 @@
 
 	/* Private variables ---------------------------------------------------------*/
 	ADC_HandleTypeDef hadc1;
-
-	I2C_HandleTypeDef hi2c1;
 
 	I2C_HandleTypeDef hi2c1;
 
@@ -85,12 +77,7 @@
 
 	uint16_t adc1_buf[ADC_BUFFER_SIZE]; // buffer za adc potenciometar
 	uint8_t rxBuff[3];  //Buffer za MIDI RX
-	uint8_t stanjeTipki[16]; // Koje su tipke pritisnute
-	uint8_t brojAktiviranihTipki = 0;
 
-	int32_t i;
-	// uint16_t ad_rez = 0;
-	// uint16_t adc_index =0;
 	uint32_t sumAdc = 0;
 	uint32_t indeksRadnogPolja_uw = 0;
 
@@ -98,15 +85,11 @@
 	float ADCGain = 0;  // treba biti izmedju 0 i 1 obavezno!!
 	uint16_t WorkingBuffer[HALF_BUFFER_SIZE] = { 0 };
 	float f; //frekvencija note
-
-	float accFaze_f;
-	float pomakRadnogPolja_f;
-	uint16_t inProcessed_ui;
-	void ArangeSamplesInBuff(int dioBuffera);
-
 	float ALPHA = 0.0f;
 	float BETA = 0.0f;
-	Voice *voices[16];
+	Voice voices[POLYNUM] = {0};
+	uint8_t stanjeTipki[POLYNUM]; // Koje su tipke pritisnute
+	uint8_t brojAktiviranihTipki = 0;
 
 	/* USER CODE END PV */
 
@@ -120,8 +103,7 @@
 	static void MX_USART2_UART_Init(void);
 	static void MX_USART1_UART_Init(void);
 	/* USER CODE BEGIN PFP */
-	void ArangeSamplesInFullBuff();
-	void ArangeSamplesInHalfBuff();
+	void ArangeSamplesInBuff(int dioBuffera);
 	/* USER CODE END PFP */
 
 	/* Private user code ---------------------------------------------------------*/
@@ -144,7 +126,7 @@
 	void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s2) {
 
 		int32_t temp_w;
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
+		//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
 		ArangeSamplesInBuff(QUARTER_BUFFER_SIZE);
 
 	//	ADCGain = brojAktiviranihTipki * 0.03f; // // pojacanje zbog ponistavanja radi razl. faza
@@ -157,7 +139,7 @@
 			dma_out[j + 1] = dma_out[j];
 			j = j + 2;
 		}
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+		//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
 	}
 
 	////////////////////////////////////////////////////
@@ -166,7 +148,7 @@
 
 		int32_t temp_w;
 		uint16_t j = 0;
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
+		//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
 		ArangeSamplesInBuff(HALF_BUFFER_SIZE);
 	// 	ADCGain = brojAktiviranihTipki * 0.03f; // pojacanje zbog ponistavanja radi razl. faza
 		ADCGain = 0.2f;
@@ -178,7 +160,7 @@
 			dma_out[j + 1] = dma_out[j];
 			j = j + 2;
 		}
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+		//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
 
 	}
 	////////////////////////////////////////////////////
@@ -192,13 +174,15 @@
 
 		if (notaStanje == 0x90) // nota ON
 				{
-			for (int i = 0; i < 16; ++i) {
-				if (voices[i] == NULL || voices[i]->aktivan == 0) //nailazak prvog praznog mjesta u polju
-						{
-					ADSR *adsr = ADSR_Init(SAMPLING_FREQ, A_TIME_MS, D_TIME_MS,
+			for (int i = 0; i < POLYNUM; ++i) {
+				if (stanjeTipki[i] == 0) //nailazak prvog praznog mjesta u polju
+				{
+					stanjeTipki[i] = nota;
+					ADSR adsr = ADSR_Init(SAMPLING_FREQ, A_TIME_MS, D_TIME_MS,
 							S_LEVEL, R_TIME_MS);
-					Voice *v = Voice_Init(adsr, nota, notaVelo);
+					Voice v = Voice_Init(adsr, nota, notaVelo);
 					voices[i] = v;
+					brojAktiviranihTipki++;
 					break;
 				}
 			}
@@ -207,9 +191,10 @@
 
 		if (notaStanje == 0x80)  // nota OFF
 				{
-			for (int i = 0; i < 16; ++i) {
-				if (voices[i]->nota == nota) {
-					voices[i]->ovojnica->released = 1;
+			for (int i = 0; i < POLYNUM; ++i) {
+				if (stanjeTipki[i] == nota) {
+					voices[i].adsr.released = 1;
+					brojAktiviranihTipki--;
 					break;
 				}
 			}
@@ -228,39 +213,29 @@
 		while (indeksRadnogPolja_uw < dioBuffera) //priprema radnog buffera HALF_BUF ili FULL_BUF
 		{  //Ogranicavanje rubnog uvjeta
 			{
-				for (int i = 0; i < 16; ++i) {
-					if (voices[i] != NULL) {
-						while (voices[i]->accFaze_f > FULL_BUFFER_SIZE) {
-							voices[i]->accFaze_f -= FULL_BUFFER_SIZE;
+				for (volatile int i = 0; i < POLYNUM; ++i) {
+
+						while (voices[i].accFaze_f > TABLE_SIZE) {
+							voices[i].accFaze_f -= TABLE_SIZE;
 						}
-					}
+
+						voices[i].accFaze_f += voices[i].pomakRadnogPolja_f;
+
+						if (voices[i].adsr.state == offState) {
+								stanjeTipki[i] = 0;
+
+							} else {
+								accFaze_uw = round(voices[i].accFaze_f);
+								sumSample_uw += ADSR_Update(voices[i].adsr,
+										CURRENT_LUT[accFaze_uw]);
+							}
 				}
 
-				uint16_t sumOfVoices_ui = 0;
-				uint16_t numOfVoices_ui = 0;
-				for (int i = 0; i < 16; ++i) {
-					if (voices[i] != NULL || voices[i]->aktivan == 1) {
-						if (voices[i]->ovojnica->state == offState) {
-							voices[i]->aktivan = 0;
-						} else {
-							uint16_t accFaze_ui = round(voices[i]->accFaze_f);
-							sumOfVoices_ui += ADSR_Update(voices[i]->ovojnica,
-									CURRENT_LUT[accFaze_ui]);
-							numOfVoices_ui++;
-						}
-					}
-
-				}
-				WorkingBuffer[indeksRadnogPolja_uw] = sumOfVoices_ui / POLYNUM;
+				WorkingBuffer[indeksRadnogPolja_uw] = sumSample_uw / POLYNUM;
 
 				if (indeksRadnogPolja_uw < FULL_BUFFER_SIZE)
 					indeksRadnogPolja_uw++;
 
-				for (int i = 0; i < 16; ++i) {
-					if (voices[i] != NULL || voices[i]->aktivan == 1) {
-						voices[i]->accFaze_f += voices[i]->pomakRadnogPolja_f;
-					}
-				}
 			}
 
 		}

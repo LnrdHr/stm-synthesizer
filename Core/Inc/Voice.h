@@ -10,11 +10,11 @@ typedef struct
 	float frekvencija_f;
 	float pomakRadnogPolja_f;
 	float accFaze_f;
-	ADSR* ovojnica;
+	ADSR adsr;
 	int aktivan;
 }Voice;
 
-Voice* Voice_Init(ADSR* adsr, char nota, char notaVelo);
+Voice Voice_Init(ADSR adsr, char nota, char notaVelo);
 
 
 #endif
