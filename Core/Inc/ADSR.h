@@ -24,7 +24,6 @@ typedef struct
 	float releaseTime;
 	uint32_t counter;
 
-	enum State state; //trenutno stanje ovojnice
 	float out;  //izlazna vrijednost amplitude nakon djelovanja ovojnice
 	char triggered; //mijenja  je trigger() funkcija u funkciji HAL_UART_RxCpltCallback() u main.c
 	char released; //mijenja je release() funkcija u funkciji HAL_UART_RxCpltCallback() u main.c
