@@ -8,7 +8,7 @@
 #ifndef SRC_TABELE_H_
 #define SRC_TABELE_H_
 const uint16_t sineLUT[];
- const uint16_t triangleLUT[];
+const uint16_t triangleLUT[];
 const uint16_t sigmoidLUT[];
 /** Generated using Dr LUT - Free Lookup Table Generator
   * https://github.com/ppelikan/drlut

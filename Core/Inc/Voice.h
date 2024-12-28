@@ -8,7 +8,7 @@ typedef struct
 	char nota;
 	char notaVelo;
 	float frekvencija_f;
-	float pomakRadnogPolja_f;
+	float pomakUTablici_f;
 	float accFaze_f;
 	ADSR adsr;
 	int aktivan;

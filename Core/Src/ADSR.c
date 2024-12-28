@@ -2,12 +2,13 @@
 #include <stdint.h>
 #include "math.h"
 
+#define SAMPLING_FREQ 44000
 uint32_t counter=0; //brojac koji provjerava da li smo dosli do kraja pojedinog segmenta
 uint16_t Nsamples=0; //broj uzoraka segmenta
 
 
 //inicijalizacija ovojnice
-ADSR ADSR_Init(int samplingRate, float aTime, float dTime, float sLevel, float rTime)
+ADSR ADSR_Init(float aTime, float dTime, float sLevel, float rTime)
 {
 	ADSR adsr;
 	adsr.state=offState;
@@ -15,7 +16,6 @@ ADSR ADSR_Init(int samplingRate, float aTime, float dTime, float sLevel, float r
 	adsr.decayTime=dTime;
 	adsr.sustainLevel=sLevel;
 	adsr.releaseTime=rTime;
-	adsr.samplingRate=samplingRate;
 	adsr.triggered = 0;
 	adsr.released = 0;
 	adsr.out = 0;
@@ -41,7 +41,7 @@ uint16_t ADSR_Update(ADSR adsr, unsigned int in)
 		{
 			adsr.state =attackState;
 			counter=0;
-			Nsamples = (adsr.samplingRate * adsr.attackTime)  ;
+			Nsamples = (SAMPLING_FREQ * adsr.attackTime)  ;
 			b1=0;
 			b2=1;
 
@@ -54,7 +54,7 @@ uint16_t ADSR_Update(ADSR adsr, unsigned int in)
 		{
 			adsr.state=decayState;
 			counter = 0;
-			Nsamples = (adsr.samplingRate * adsr.decayTime)  ;
+			Nsamples = (SAMPLING_FREQ * adsr.decayTime)  ;
 			b1=b2;
 			b2=adsr.sustainLevel;
 			break;
@@ -82,7 +82,7 @@ uint16_t ADSR_Update(ADSR adsr, unsigned int in)
 		{
 			adsr.state=releaseState;
 			counter=0;
-			Nsamples = (adsr.samplingRate * adsr.releaseTime) ;
+			Nsamples = (SAMPLING_FREQ * adsr.releaseTime) ;
 			b1=adsr.sustainLevel;
 			b2=0;
 			break;
@@ -98,7 +98,7 @@ uint16_t ADSR_Update(ADSR adsr, unsigned int in)
 		{
 			adsr.state=attackState;
 			counter=0;
-			Nsamples = (adsr.samplingRate * adsr.attackTime);
+			Nsamples = (SAMPLING_FREQ * adsr.attackTime);
 			b1=0;
 			b2=1;
 			out=0;

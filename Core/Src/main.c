@@ -178,7 +178,7 @@
 				if (stanjeTipki[i] == 0) //nailazak prvog praznog mjesta u polju
 				{
 					stanjeTipki[i] = nota;
-					ADSR adsr = ADSR_Init(SAMPLING_FREQ, A_TIME_MS, D_TIME_MS,
+					ADSR adsr = ADSR_Init(A_TIME_MS, D_TIME_MS,
 							S_LEVEL, R_TIME_MS);
 					Voice v = Voice_Init(adsr, nota, notaVelo);
 					voices[i] = v;
@@ -215,25 +215,29 @@
 			{
 				for (volatile int i = 0; i < POLYNUM; ++i) {
 
-						while (voices[i].accFaze_f > TABLE_SIZE) {
+						while (voices[i].accFaze_f + voices[i].pomakUTablici_f > TABLE_SIZE) {
 							voices[i].accFaze_f -= TABLE_SIZE;
 						}
 
-						voices[i].accFaze_f += voices[i].pomakRadnogPolja_f;
+						voices[i].accFaze_f += voices[i].pomakUTablici_f;
 
 						if (voices[i].adsr.state == offState) {
 								stanjeTipki[i] = 0;
 
 							} else {
 								accFaze_uw = round(voices[i].accFaze_f);
-								sumSample_uw += ADSR_Update(voices[i].adsr,
-										CURRENT_LUT[accFaze_uw]);
+								uint16_t sample_ui = CURRENT_LUT[accFaze_uw];
+
+								uint16_t processedSample_ui = ADSR_Update(voices[i].adsr,
+										sample_ui);
+
+								sumSample_uw += processedSample_ui;
 							}
 				}
 
 				WorkingBuffer[indeksRadnogPolja_uw] = sumSample_uw / POLYNUM;
 
-				if (indeksRadnogPolja_uw < FULL_BUFFER_SIZE)
+				if (indeksRadnogPolja_uw < HALF_BUFFER_SIZE)
 					indeksRadnogPolja_uw++;
 
 			}

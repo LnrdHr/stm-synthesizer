@@ -6,7 +6,6 @@
 //adsr ovojnica
 typedef struct
 {
-	int samplingRate;
 
 	enum State
 	{
