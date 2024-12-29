@@ -2,7 +2,7 @@
 #define VOICE_H
 #include "ADSR.h"
 
-typedef struct
+struct Voice
 {
 	int notaStanje;
 	char nota;
@@ -10,11 +10,11 @@ typedef struct
 	float frekvencija_f;
 	float pomakUTablici_f;
 	float accFaze_f;
-	ADSR adsr;
+	struct ADSR adsr;
 	int aktivan;
-}Voice;
+};
 
-Voice Voice_Init(ADSR adsr, char nota, char notaVelo);
+struct Voice Voice_Init(struct ADSR adsr, char nota, char notaVelo);
 
 
 #endif

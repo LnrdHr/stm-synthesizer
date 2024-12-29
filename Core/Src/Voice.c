@@ -2,9 +2,9 @@
 #include "Voice.h"
 #include "math.h"
 
-Voice Voice_Init(ADSR ovojnica, char nota, char notaVelo)
+struct Voice Voice_Init(struct ADSR ovojnica, char nota, char notaVelo)
 {
-	Voice voice;
+	struct Voice voice;
 	voice.nota = nota;
 	voice.notaVelo = notaVelo;
 	voice.frekvencija_f = 440.0f * (pow(2,((voice.nota - 69) * 0.0833333f ))) / 2;

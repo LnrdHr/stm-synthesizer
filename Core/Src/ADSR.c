@@ -3,14 +3,13 @@
 #include "math.h"
 
 #define SAMPLING_FREQ 44000
-uint32_t counter=0; //brojac koji provjerava da li smo dosli do kraja pojedinog segmenta
 uint16_t Nsamples=0; //broj uzoraka segmenta
 
 
 //inicijalizacija ovojnice
-ADSR ADSR_Init(float aTime, float dTime, float sLevel, float rTime)
+struct ADSR ADSR_Init(float aTime, float dTime, float sLevel, float rTime)
 {
-	ADSR adsr;
+	struct ADSR adsr;
 	adsr.state=offState;
 	adsr.attackTime=aTime;
 	adsr.decayTime=dTime;
@@ -28,7 +27,7 @@ ADSR ADSR_Init(float aTime, float dTime, float sLevel, float rTime)
  *
  */
 
-uint16_t ADSR_Update(ADSR adsr, unsigned int in)
+uint16_t ADSR_Update(struct ADSR adsr, unsigned int in)
 {
 	uint16_t out=0; //amplitudni izlaz
 	float b1=0; //pocetna tocka level segmenta
@@ -40,7 +39,7 @@ uint16_t ADSR_Update(ADSR adsr, unsigned int in)
 		if(adsr.triggered==1)
 		{
 			adsr.state =attackState;
-			counter=0;
+			adsr.counter=0;
 			Nsamples = (SAMPLING_FREQ * adsr.attackTime)  ;
 			b1=0;
 			b2=1;
@@ -50,30 +49,30 @@ uint16_t ADSR_Update(ADSR adsr, unsigned int in)
 		break;
 
 	case attackState:
-		if(counter==Nsamples)
+		if(adsr.counter==Nsamples)
 		{
 			adsr.state=decayState;
-			counter = 0;
+			adsr.counter = 0;
 			Nsamples = (SAMPLING_FREQ * adsr.decayTime)  ;
 			b1=b2;
 			b2=adsr.sustainLevel;
 			break;
 		}
 
-		out = (int)(counter * in * (b2-b1) / Nsamples);
-		counter++;
+		out = (int)(adsr.counter * in * (b2-b1) / Nsamples);
+		adsr.counter++;
 
 		break;
 
 	case decayState:
-		if(counter==Nsamples)
+		if(adsr.counter==Nsamples)
 		{
 			adsr.state=sustainState;
-			counter=0;
+			adsr.counter=0;
 			b1=b2=adsr.sustainLevel;
 		}
-		out =  (in * b1) -  (int)(counter * in * (b1- b2) / Nsamples);
-		counter++;
+		out =  (in * b1) -  (int)(adsr.counter * in * (b1- b2) / Nsamples);
+		adsr.counter++;
 
 		break;
 
@@ -81,14 +80,14 @@ uint16_t ADSR_Update(ADSR adsr, unsigned int in)
 		if(adsr.released==1)
 		{
 			adsr.state=releaseState;
-			counter=0;
+			adsr.counter=0;
 			Nsamples = (SAMPLING_FREQ * adsr.releaseTime) ;
 			b1=adsr.sustainLevel;
 			b2=0;
 			break;
 		}
 		out = round(in * b2);
-		counter++;
+		adsr.counter++;
 
 		break;
 
@@ -97,21 +96,21 @@ uint16_t ADSR_Update(ADSR adsr, unsigned int in)
 		if(adsr.triggered==1)
 		{
 			adsr.state=attackState;
-			counter=0;
+			adsr.counter=0;
 			Nsamples = (SAMPLING_FREQ * adsr.attackTime);
 			b1=0;
 			b2=1;
 			out=0;
 			break;
 		}
-		if(counter==Nsamples)
+		if(adsr.counter==Nsamples)
 		{
 			adsr.state=offState;
-			counter=0;
+			adsr.counter=0;
 			break;
 		}
-		out =  (in * b1) - round(counter * in * (b1- b2) / Nsamples);
-		counter++;
+		out =  (in * b1) - round(adsr.counter * in * (b1- b2) / Nsamples);
+		adsr.counter++;
 
 		break;
 	}

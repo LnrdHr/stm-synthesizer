@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 //adsr ovojnica
-typedef struct
+struct ADSR
 {
 
 	enum State
@@ -25,11 +25,12 @@ typedef struct
 	float out;  //izlazna vrijednost amplitude nakon djelovanja ovojnice
 	char triggered;
 	char released;
-}ADSR;
+	uint16_t counter;
+};
 
-ADSR ADSR_Init(int samplingRate, float attackTime, float decayTime, float sustainLevel, float releaseTime);
+struct ADSR ADSR_Init(float attackTime, float decayTime, float sustainLevel, float releaseTime);
 
 //state machine funkcija koja se nalazi u callbacku ArangeSamples
-uint16_t ADSR_Update(ADSR adsr, unsigned int in);
+uint16_t ADSR_Update(struct ADSR adsr, unsigned int in);
 
 #endif
