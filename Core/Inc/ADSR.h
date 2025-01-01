@@ -15,22 +15,22 @@ typedef struct
 		decayState,
 		sustainState,
 		releaseState
-	};
+	}state;
 
 	float attackTime;
 	float decayTime;
 	float sustainLevel;
 	float releaseTime;
 	uint32_t counter;
+	uint32_t Nsamples; //broj uzoraka segmenta
+	float b1; //pocetna tocka level segmenta
+	float b2; //krajnja tocka level segmenta
 
-	enum State state; //trenutno stanje ovojnice
 	float out;  //izlazna vrijednost amplitude nakon djelovanja ovojnice
 	char triggered; //mijenja  je trigger() funkcija u funkciji HAL_UART_RxCpltCallback() u main.c
 	char released; //mijenja je release() funkcija u funkciji HAL_UART_RxCpltCallback() u main.c
 	char finished;
 }ADSR;
-
-extern ADSR adsr; //mora se tako definirati da bi bila dostupna u main.c
 
 void ADSR_Init(int samplingRate, float attackTime, float decayTime, float sustainLevel, float releaseTime);
 
@@ -38,7 +38,8 @@ void ADSR_Init(int samplingRate, float attackTime, float decayTime, float sustai
 uint16_t ADSR_CalculateNextSample(float Nsamples, uint16_t input, float b1, float b2);
 
 //state machine funkcija koja se nalazi u callbackovima ArangeSamplesInHalfBuff i ArangeSamplesInFullBuff
-uint16_t ADSR_Update(unsigned int in);
+uint16_t ADSR_Update( ADSR adsr, unsigned int in);
+//uint16_t ADSR_Update(unsigned int in);
 //postavlja triggered zastavicu u 1
 void ADSR_Trigger();
 //postavlja released zastavicu u 1, a triggered u 0(da ne bi slucajno bili u stanju released i triggered istovremeno)

@@ -1,3 +1,0 @@
-../Core/Src/IFX_EMA_LOW.c:3:6:IFX_EMA_LOW_Init	1
-../Core/Src/IFX_EMA_LOW.c:9:7:IFX_EMA_LOW_Update	1
-../Core/Src/IFX_EMA_LOW.c:15:6:IFX_EMA_LOW_SetAlpha	3

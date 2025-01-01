@@ -1,5 +1,5 @@
 /* USER CODE BEGIN Header */
-/** verzija pseudopolifonija s ovojnicom
+/** verzija polifonije s ovojnicom. Treba srediti mjesanje attacka i releasea.
   ******************************************************************************
   * @file           : main.c
   * @brief          : Main program body
@@ -31,7 +31,8 @@
 #include <EMA_LOW.h>
 #include <Delay.h>
 #include <ADSR.h>
-#include <VOICE.h>
+
+//#include <VOICE.h>
 
 
 //#include <MIDI.h>
@@ -78,8 +79,8 @@ DMA_HandleTypeDef hdma_usart1_rx;
  int16_t dma_out[FULL_BUFFER_SIZE];
  uint16_t adc1_buf[ADC_BUFFER_SIZE]; // buffer za adc potenciometar
  uint8_t rxBuff[3];  //Buffer za MIDI RX
- uint8_t stanjeTipki[16]; // Koje su tipke pritisnute
- uint8_t glasnocaTonova[16];
+ uint8_t stanjeTipki[8]; // Koje su tipke pritisnute
+ uint8_t glasnocaTonova[8];
  uint8_t brojAktiviranihTipki =0;
  int32_t i;
  // uint16_t ad_rez = 0;
@@ -94,6 +95,24 @@ DMA_HandleTypeDef hdma_usart1_rx;
  float accFaze_f;
  float pomakRadnogPolja_f;
  uint16_t inProcessed_ui;
+
+ float attack_f = 0.8;
+ float decay_f =0.2;
+ float sustain_f= 0.9f;
+ float release_f=0.8f;
+
+ struct Voice{
+ 	 char nota;
+ 	 char notaVelo;
+ 	 float frekvencija;
+ 	 float accFaze_f;
+ 	 float pomakRadnogPolja_f;
+ 	 uint16_t sampleVal_ui;
+ 	 ADSR Ovojnica;
+  };
+  struct Voice voices[6] ={0};
+
+
 // void  ArangeSamplesInFullBuff();
  //void  ArangeSamplesInHalfBuff();
  void  ArangeSamplesInBuff(int dioBuffera);
@@ -178,19 +197,33 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef* hi2s2)
 // MIDI IN obrada
 void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
 {
-
+    #define NOTA_ON 1
+	#define NOTA_NUM 2
+	#define NOTA_VELO 3
    char notaStanje = rxBuff[0];  // ON ili OFF
    char nota = rxBuff[1];  // koja tipka u MIDI sustavu
    char notaVelo = rxBuff[2];  // velocity odn. glasnoca tona
-	#if defined  ENVELOPE
-   	   	   ADSR_Reset();
-	#endif
-   	    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, RESET);
+   /*
+   char recByte = rxBuff[0];
+   char st;
+
+   if (recByte == 0x90)
+	   st = NOTA_ON;
+   switch (st)
+   {
+   	   case  NOTA_ON:
+
+	          break;
+   }
+   */
+   //////////////
    if (notaStanje == 0x90)  // nota ON
    {
 	  // AddMIDInote();
+
 	      for (int i =0; i <POLYNUM; i++)
 	   	   {
+
 	   		   if (stanjeTipki[i]== 0 ) // ako mjesto u polju nije zauzeto
 	   		   {
 	   			   stanjeTipki[i] = nota;
@@ -204,11 +237,12 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
 	   			    // Izracun  pomaka pokazivaca u tablici
 	   			    // ReadPointer = vel. tablice * f /sampling frekv.
 	   			    voices[i].pomakRadnogPolja_f = TABLE_SIZE * voices[i].frekvencija / SAMPLING_FREQ;
-	   			    voices[i].accFaze_f = 0;  // 500 da pocne od nule i nema klika kod attacka
-	   				#if defined  ENVELOPE
-	   			    	voices[i].Ovojnica.triggered = 1;
-	   			    	adsr.triggered = 1;
-	   				#endif
+	   			    if ( voices[i].Ovojnica.finished)
+	   			    {
+	   			    	voices[i].accFaze_f = 0;  // 500 da pocne od nule i nema klika kod attacka
+	   			    }
+	   			    voices[i].Ovojnica.triggered = 1;
+	   			 	voices[i].Ovojnica.released = 0;
 	   			     	 break;
 	   		   }
 	   	   }
@@ -220,24 +254,22 @@ void  HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart1)
   	   {
   		   if (stanjeTipki[i]== nota )
   		   {
+  			   if ( voices[i].Ovojnica.finished)
+  			   {
+  				   stanjeTipki[i] = 0;
+  				   glasnocaTonova[i] = 0;
+  				   brojAktiviranihTipki--;
+  			   }
 
-  			   stanjeTipki[i] = 0;
-  			   glasnocaTonova[i] = 0;
-  			   brojAktiviranihTipki--;
-  			//   f = 0;
-				#if defined  ENVELOPE
-  			   	   voices[i].Ovojnica.triggered = 0;
-  			   	   voices[i].Ovojnica.released = 1;
-  			    //   voices[i].pomakRadnogPolja_f = 0;
-  			   //    voices[i].accFaze_f = 0;
-  			   	  // ADSR_Release();
-				#endif
-  			   	adsr.released = 1;
-  			   	adsr.triggered = 0;
-  			   break;
+  			  {
+  				 voices[i].Ovojnica.triggered = 0;
+  			    voices[i].Ovojnica.released = 1;
+  			 }
+  			 //  break;
   		   }
   	   }
      }
+  // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, RESET);
 }
 ////////////////////////////////////////////////////
 
@@ -245,39 +277,139 @@ void  ArangeSamplesInBuff(int dioBuffera)
 {
 	 uint32_t accFaze_uw;
 	 uint32_t  sumSample_uw =0; //sadrzi ukupnu vrijednost svih sampla koja se dijeli s brojem aktiviranih tipki
-
+   //  uint16_t out= 0;
 	 if (dioBuffera == QUARTER_BUFFER_SIZE)   // prvi  dio
 	 {
 		 indeksRadnogPolja_uw = 0;
 	 }
 			while(indeksRadnogPolja_uw < dioBuffera)  //priprema radnog buffera HALF_BUF ili FULL_BUF
 			{  //Ogranicavanje rubnog uvjeta
-				for (int i=0; i < POLYNUM; i++) 		// izracun 1 sample
+				for (int i=0; i < POLYNUM; i++)  // izracun jednog sample koji je zbroj svih
 				{
 
-						while (voices[i].accFaze_f >= TABLE_SIZE)
+						while (voices[i].accFaze_f  + voices[i].pomakRadnogPolja_f >= TABLE_SIZE)
 						{
 							voices[i].accFaze_f = voices[i].accFaze_f - TABLE_SIZE ;
 							accFaze_uw = (int) voices[i].accFaze_f;
 						}
 						voices[i].accFaze_f =  voices[i].accFaze_f + voices[i].pomakRadnogPolja_f;
 						accFaze_uw = round(voices[i].accFaze_f) ;
-						sumSample_uw = (sumSample_uw + CURRENT_LUT[accFaze_uw]);
+						uint16_t sample_ui =  CURRENT_LUT[accFaze_uw];
 
+						/* ---------------------------------------------------------*/
+
+					//	uint16_t out=0; //amplitudni izlaz
+						//if(voices[i].Ovojnica.state != offState)	printf("%d\n", voices[i].Ovojnica.state);
+						switch (voices[i].Ovojnica.state)
+						{
+						case offState:
+						//	printf("%d\n", voices[i].Ovojnica.state
+							if(voices[i].Ovojnica.triggered==1)
+							{
+								voices[i].Ovojnica.finished = 0;
+								voices[i].Ovojnica.released = 0;
+								voices[i].Ovojnica.state = attackState;
+								voices[i].Ovojnica.Nsamples = (SAMPLING_FREQ * voices[i].Ovojnica.attackTime)  ;//
+								voices[i].Ovojnica.b1=0;
+								voices[i].Ovojnica.b2=1;
+							}
+							voices[i].Ovojnica.out = 0;
+							break;
+
+						case attackState:
+							if(voices[i].Ovojnica.counter == voices[i].Ovojnica.Nsamples)
+							{
+								voices[i].Ovojnica.out = (int)(voices[i].Ovojnica.counter * sample_ui * (voices[i].Ovojnica.b2-voices[i].Ovojnica.b1) / voices[i].Ovojnica.Nsamples);// za vrijeme < 1 s
+								voices[i].Ovojnica.state=decayState;
+								voices[i].Ovojnica.counter = 0;
+								voices[i].Ovojnica.Nsamples = (SAMPLING_FREQ * voices[i].Ovojnica.decayTime);
+								voices[i].Ovojnica.b1=voices[i].Ovojnica.b2;
+								voices[i].Ovojnica.b2=voices[i].Ovojnica.sustainLevel;
+								break;
+							}
+					     //    temp =(voices[i].Ovojnica.b2-voices[i].Ovojnica.b1) / Nsamples * in;  //Ako zelimo attack time > 1s tada koristimo double
+					      //    out = (int)(counter * temp);
+
+							voices[i].Ovojnica.out = (int)(voices[i].Ovojnica.counter * sample_ui * (voices[i].Ovojnica.b2-voices[i].Ovojnica.b1) / voices[i].Ovojnica.Nsamples);// za vrijeme < 1 s
+							voices[i].Ovojnica.counter++;
+							//printf("%d\n", voices[0].Ovojnica.counter);
+
+							break;
+
+						case decayState:
+							if(voices[i].Ovojnica.counter==voices[i].Ovojnica.Nsamples)
+							{
+								voices[i].Ovojnica.state=sustainState;
+								voices[i].Ovojnica.counter=0;
+								voices[i].Ovojnica.b1=voices[i].Ovojnica.b2=voices[i].Ovojnica.sustainLevel;
+							}
+							voices[i].Ovojnica.counter++;
+							voices[i].Ovojnica.out =  (sample_ui * voices[i].Ovojnica.b1) -  (int)(voices[i].Ovojnica.counter * sample_ui * (voices[i].Ovojnica.b1- voices[i].Ovojnica.b2) / voices[i].Ovojnica.Nsamples);
+						//	printf("%d\n", out);
+						//	if (voices[i].Ovojnica.counter > 10)
+						//			while(1);
+							break;
+
+						case sustainState:
+							if(voices[i].Ovojnica.released ==1)
+							{
+								voices[i].Ovojnica.out = round(sample_ui * voices[i].Ovojnica.b2);
+								voices[i].Ovojnica.state=releaseState;
+								voices[i].Ovojnica.counter=0;
+								voices[i].Ovojnica.Nsamples = (SAMPLING_FREQ * voices[i].Ovojnica.releaseTime) ;
+								voices[i].Ovojnica.b1=voices[i].Ovojnica.sustainLevel;
+								voices[i].Ovojnica.b2=0;
+								break;
+							}
+							voices[i].Ovojnica.out = round(sample_ui * voices[i].Ovojnica.b2);
+							break;
+
+						case releaseState:
+							//ovojnica ne mora biti u off stanju da bi se mogla ponovno pokrenuti
+					/*		if(voices[i].Ovojnica.triggered==1)
+							{
+								voices[i].Ovojnica.state = offState;
+								//voices[i].Ovojnica.counter=0;
+								voices[i].Ovojnica.Nsamples = (voices[i].Ovojnica.samplingRate * voices[i].Ovojnica.attackTime);
+								voices[i].Ovojnica.b1=0;
+								voices[i].Ovojnica.b2=1;
+
+								out=0;
+							//	break;
+							}
+*/
+							if(voices[i].Ovojnica.counter==voices[i].Ovojnica.Nsamples)
+							{
+								voices[i].Ovojnica.state = offState;
+								voices[i].Ovojnica.counter = 0;
+								voices[i].Ovojnica.finished = 1;
+
+						  		stanjeTipki[i] = 0;
+						  		glasnocaTonova[i] = 0;
+						  		brojAktiviranihTipki--;
+
+								break;
+							}
+							voices[i].Ovojnica.out =  (sample_ui * voices[i].Ovojnica.b1) - (int)(voices[i].Ovojnica.counter * sample_ui * (voices[i].Ovojnica.b1- voices[i].Ovojnica.b2) / voices[i].Ovojnica.Nsamples);
+							voices[i].Ovojnica.counter++;
+							//printf("%d\n", voices[0].Ovojnica.counter);
+							break;
+						}  // end switch
+						/* --------------------------------------------------------------*/
+					//	printf("%d\n", out);
+						inProcessed_ui = voices[i].Ovojnica.out;
+
+						sumSample_uw = sumSample_uw + inProcessed_ui;
 				 }  //end for
 
 				sumSample_uw = sumSample_uw  / POLYNUM;
-			//	 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_SET);
-				inProcessed_ui = ADSR_Update(sumSample_uw);
-			//	 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
-				   WorkingBuffer[indeksRadnogPolja_uw] = inProcessed_ui;
-				   sumSample_uw =0;
+				WorkingBuffer[indeksRadnogPolja_uw] = sumSample_uw ;
+				sumSample_uw =0;
 				if (indeksRadnogPolja_uw < HALF_BUFFER_SIZE)
 					  indeksRadnogPolja_uw++;
-
 	    	  }  //end while
-
-		if (adsr.finished == 1)
+/*
+		if (voices[i].Ovojnica.finished == 1)
 		{
 			for (int i=0; i < POLYNUM; i++)
 			{
@@ -286,7 +418,7 @@ void  ArangeSamplesInBuff(int dioBuffera)
 			}
 					accFaze_uw = 0;
 		 }
-
+*/
 
 }
 ////////////////////// write funkcija  za printf
@@ -318,9 +450,16 @@ int main(void)
 	  //EMA_LOW_Init(&low_filt, ALPHA);
   //delay_Init(&delay, 500.0f, 0.5f, 0.5f, SAMPLING_FREQ);
 
-	#if defined  ENVELOPE
-  	  	  ADSR_Init(SAMPLING_FREQ, 0.1f, 0.2f, 0.9f, 0.2f); //A, D, S, R vrijeme u s, sustain 0-1
-    #endif
+  	  	  //ADSR_Init(SAMPLING_FREQ, attack_f, decay_f, sustain_f, release_f); //A, D, S, R vrijeme u s, sustain 0-1
+  		  for (int i = 0; i < POLYNUM; i++)
+  		  {
+  			  voices[i].Ovojnica.attackTime = attack_f;
+  			  voices[i].Ovojnica.decayTime = decay_f;
+			  voices[i].Ovojnica.sustainLevel = sustain_f;
+			  voices[i].Ovojnica.releaseTime = release_f;
+			  voices[i].Ovojnica.state = offState;
+			  voices[i].Ovojnica.finished = 1;
+  		  }
   /* USER CODE END Init */
 
   /* Configure the system clock */
