@@ -11,7 +11,7 @@
 <br/>
 <br/>
 U ovom demo-u koristimo Dexed software kao MIDI out jer ne možemo povezati na klasičan keyboard zato što imamo problem da nam trenutni keyboard konstantno šalje "Timing clock" poruke, ali zato ne šalje NOTE OFF poruku kada je tipka otpuštena.
-Prvi potenciometrom se mijenja gain, drugim miješanje sinusnog signala i signala vala pile, a trećim granična frekvencija niskopropusnog filtra. <br/>
+Prvi potenciometrom se mijenja gain, drugim miješanje sinusnog val i val pile, a trećim granična frekvencija niskopropusnog filtra. <br/>
 Potrebno dodati i preostale parametre na display.
 <br/>
 
