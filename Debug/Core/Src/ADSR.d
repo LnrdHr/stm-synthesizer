@@ -1,2 +1,2 @@
-Core/Src/ADSR.o: ../Core/Src/ADSR.c ../Core/Inc/ADSR.h
-../Core/Inc/ADSR.h:
+Core/Src/Adsr.o: ../Core/Src/Adsr.c ../Core/Inc/Adsr.h
+../Core/Inc/Adsr.h:

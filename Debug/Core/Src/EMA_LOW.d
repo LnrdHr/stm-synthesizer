@@ -1,2 +1,2 @@
-Core/Src/EMA_LOW.o: ../Core/Src/EMA_LOW.c ../Core/Inc/EMA_LOW.h
-../Core/Inc/EMA_LOW.h:
+Core/Src/Ema_low.o: ../Core/Src/Ema_low.c ../Core/Inc/Ema_low.h
+../Core/Inc/Ema_low.h:

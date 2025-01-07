@@ -1,20 +1,15 @@
 #ifndef VOICE_H
 #define VOICE_H
-#include "ADSR.h"
-
-struct Voice
-{
-	int notaStanje;
-	char nota;
-	char notaVelo;
-	float frekvencija_f;
-	float pomakUTablici_f;
-	float accFaze_f;
-	struct ADSR adsr;
-	int aktivan;
-};
-
-struct Voice Voice_Init(struct ADSR adsr, char nota, char notaVelo);
+#include <Adsr.h>
+struct Voice{
+	 char nota;
+	 char notaVelo;
+	 float frekvencija;
+	 float accFaze_f;
+	 float pomakRadnogPolja_f;
+	 uint16_t sampleVal_ui;
+	 Adsr Ovojnica;
+ };
 
 
 #endif

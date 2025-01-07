@@ -1,25 +1,15 @@
-#include <EMA_LOW.h>
+#include <Ema_low.h>
+#include <stdint.h>
 
+float alpha = 0;
 void EMA_LOW_Init(EMA_LOW *filt, float alpha)
 {
-	EMA_LOW_SetAlpha(filt, alpha);
 	filt->out = 0.0f;
 }
 
-float EMA_LOW_Update(EMA_LOW *filt, float in)
+float EMA_LOW_Update(EMA_LOW *filt, uint16_t in)
 {
-	filt->out = filt->alpha * in + (1-filt->alpha) * filt->out;
+	filt->out = alpha * in + (1-alpha) * filt->out;
 	return filt->out;
-}
-
-void EMA_LOW_SetAlpha(EMA_LOW *filt, float alpha)
-{
-	//clamping - ogranicavanje alphe
-	if(alpha > 1.0f)
-		alpha = 1.0f;
-	if(alpha < 0.0f)
-		alpha = 0.0f;
-
-	filt->alpha = alpha;
 }
 

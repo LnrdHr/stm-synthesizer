@@ -1,6 +1,6 @@
 #ifndef EMA_LOW_H
 #define EMA_LOW_H
-
+#include <stdint.h>
 typedef struct
 {
 	// EMA filter: diskretan, niskopropusni IIR(beskonacan impulsni odziv) filter prvog reda
@@ -13,12 +13,10 @@ typedef struct
 	 * u potpunosti propustati ulazni signal
 	 *
 	 */
-	float alpha;
 	float out;
 }EMA_LOW;
 
 void EMA_LOW_Init(EMA_LOW *filt, float alpha);
-void EMA_LOW_SetAlpha(EMA_LOW *filt, float alpha);
-float EMA_LOW_Update(EMA_LOW *filt, float in);
+float EMA_LOW_Update(EMA_LOW *filt, uint16_t in);
 
 #endif
