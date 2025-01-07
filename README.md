@@ -14,5 +14,7 @@ U ovom demo-u koristimo Dexed software kao MIDI out jer ne možemo povezati na k
 Prvi potenciometrom se mijenja gain, drugim miješanje sinusnog signala i signala vala pile, a trećim granična frekvencija niskopropusnog filtera <br/>
 Treba dodati i ostale parametre na display.
 <br/>
-https://github.com/user-attachments/assets/56884afa-5df5-4314-90ca-bbbfe4220cca
+
+https://github.com/user-attachments/assets/6007c01d-9187-402b-9b60-5d88d3de9937
+
 
