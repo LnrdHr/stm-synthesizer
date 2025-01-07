@@ -6,3 +6,4 @@
  * LCD ekran koji će pokazivati stanja potenciometra
  * midi
  * ...
+![slika_sintic](https://github.com/user-attachments/assets/70538e2f-80b0-4b2f-93c7-5275630b5a62)
