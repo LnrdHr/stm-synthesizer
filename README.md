@@ -18,3 +18,7 @@ Potrebno dodati i preostale parametre na display.
 https://github.com/user-attachments/assets/6007c01d-9187-402b-9b60-5d88d3de9937
 
 
+
+Update: Ipak smo uspjeli spojiti na MIDI 
+https://github.com/user-attachments/assets/e82031e7-7499-4c76-8a2b-a9851a2cd151
+
